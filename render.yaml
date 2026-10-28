@@ -1,0 +1,28 @@
+# Render Infrastructure Blueprint for SplitPay AI
+# Enables 1-click cloud deployment on Render's free tier
+
+services:
+  - type: web
+    name: splitpay-ai
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: HOST
+        value: 0.0.0.0
+      - key: PAYPAL_MODE
+        value: sandbox
+      - key: GEMINI_MODEL
+        value: gemini-3.6-flash
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      - key: APP_BASE_URL
+        value: https://splitpay-ai.onrender.com

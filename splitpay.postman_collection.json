@@ -1,0 +1,285 @@
+{
+	"info": {
+		"_postman_id": "a901f435-01e4-4d1e-8e84-splitpayai",
+		"name": "SplitPay AI API Suite",
+		"description": "Comprehensive Postman test collection for SplitPay AI: Receipt OCR with Gemini Vision, Natural-Language Splitting, Exact Hare-Niemeyer Arithmetic, and PayPal Sandbox Orders v2.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. System Health Check",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"pm.test(\"Service is online\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.status).to.eql(\"online\");",
+							"    pm.expect(jsonData.app).to.eql(\"SplitPay AI\");",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/health",
+					"host": ["{{baseUrl}}"],
+					"path": ["api", "health"]
+				}
+			}
+		},
+		{
+			"name": "2. Load Demo Receipt",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"var jsonData = pm.response.json();",
+							"pm.test(\"Receipt contains merchant and items\", function () {",
+							"    pm.expect(jsonData).to.have.property('merchant');",
+							"    pm.expect(jsonData.items.length).to.be.above(0);",
+							"    pm.collectionVariables.set(\"bill_id\", jsonData.bill_id);",
+							"    pm.collectionVariables.set(\"receipt_items\", JSON.stringify(jsonData.items));",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/receipt/sample",
+					"host": ["{{baseUrl}}"],
+					"path": ["api", "receipt", "sample"]
+				}
+			}
+		},
+		{
+			"name": "3. Natural Language Split Parsing",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"var jsonData = pm.response.json();",
+							"pm.test(\"Assignments produced\", function () {",
+							"    pm.expect(jsonData.assignments.length).to.be.above(0);",
+							"    pm.expect(jsonData.people_found.length).to.be.above(0);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"instruction\": \"Alice had the Margherita Pizza, Bob and Charlie split the Calamari and Truffle Pasta, we all shared drinks and tiramisu\",\n  \"items\": [\n    {\"name\": \"Wood-Fired Margherita Pizza\", \"price\": 16.50, \"quantity\": 1, \"consumers\": []},\n    {\"name\": \"Fettuccine Alfredo with Truffle\", \"price\": 22.00, \"quantity\": 1, \"consumers\": []},\n    {\"name\": \"Crispy Calamari Fritti\", \"price\": 14.00, \"quantity\": 1, \"consumers\": []},\n    {\"name\": \"Tiramisu Classico\", \"price\": 9.50, \"quantity\": 1, \"consumers\": []},\n    {\"name\": \"San Pellegrino Sparkling (1L)\", \"price\": 6.00, \"quantity\": 1, \"consumers\": []},\n    {\"name\": \"Chianti Classico Glass\", \"price\": 12.00, \"quantity\": 1, \"consumers\": []}\n  ]\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/split/parse-instruction",
+					"host": ["{{baseUrl}}"],
+					"path": ["api", "split", "parse-instruction"]
+				}
+			}
+		},
+		{
+			"name": "4. Calculate Exact Integer Split (Hare-Niemeyer)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"var jsonData = pm.response.json();",
+							"pm.test(\"Math is balanced down to 0 cents\", function () {",
+							"    pm.expect(jsonData.is_balanced).to.be.true;",
+							"    var sum = 0;",
+							"    Object.values(jsonData.shares).forEach(function(s) {",
+							"        sum += s.total;",
+							"    });",
+							"    pm.expect(Math.round(sum * 100)).to.eql(Math.round(jsonData.total * 100));",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"items\": [\n    {\"name\": \"Wood-Fired Margherita Pizza\", \"price\": 16.50, \"consumers\": [\"Alice\"]},\n    {\"name\": \"Fettuccine Alfredo with Truffle\", \"price\": 22.00, \"consumers\": [\"Bob\", \"Charlie\"]},\n    {\"name\": \"Crispy Calamari Fritti\", \"price\": 14.00, \"consumers\": [\"Bob\", \"Charlie\"]},\n    {\"name\": \"Tiramisu Classico\", \"price\": 9.50, \"consumers\": [\"Alice\", \"Bob\", \"Charlie\"]},\n    {\"name\": \"San Pellegrino Sparkling (1L)\", \"price\": 6.00, \"consumers\": [\"Alice\", \"Bob\", \"Charlie\"]},\n    {\"name\": \"Chianti Classico Glass\", \"price\": 12.00, \"consumers\": [\"Bob\"]}\n  ],\n  \"tax\": 7.20,\n  \"tip\": 16.00,\n  \"discount\": 0.00,\n  \"override_total\": 103.20\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/split/calculate?bill_id={{bill_id}}",
+					"host": ["{{baseUrl}}"],
+					"path": ["api", "split", "calculate"],
+					"query": [
+						{
+							"key": "bill_id",
+							"value": "{{bill_id}}"
+						}
+					]
+				}
+			}
+		},
+		{
+			"name": "5. Create PayPal Orders v2",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"var jsonData = pm.response.json();",
+							"pm.test(\"Orders created with approval URLs\", function () {",
+							"    pm.expect(jsonData.orders.length).to.be.above(0);",
+							"    pm.collectionVariables.set(\"test_order_id\", jsonData.orders[0].order_id);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"bill_id\": \"{{bill_id}}\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/paypal/create-orders",
+					"host": ["{{baseUrl}}"],
+					"path": ["api", "paypal", "create-orders"]
+				}
+			}
+		},
+		{
+			"name": "6. Capture PayPal Order",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"var jsonData = pm.response.json();",
+							"pm.test(\"Order marked completed\", function () {",
+							"    pm.expect(jsonData.status).to.be.oneOf([\"COMPLETED\", \"APPROVED\"]);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/paypal/capture-order/{{test_order_id}}",
+					"host": ["{{baseUrl}}"],
+					"path": ["api", "paypal", "capture-order", "{{test_order_id}}"]
+				}
+			}
+		},
+		{
+			"name": "7. Generate AI Tone Nudge",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"var jsonData = pm.response.json();",
+							"pm.test(\"Contains message and WhatsApp link\", function () {",
+							"    pm.expect(jsonData).to.have.property('message');",
+							"    pm.expect(jsonData.shareable_whatsapp_url).to.include(\"https://wa.me/?text=\");",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"person\": \"Bob\",\n  \"amount\": 38.50,\n  \"merchant\": \"Mario's Trattoria\",\n  \"items\": [\"Fettuccine Alfredo\", \"Calamari\"],\n  \"payment_link\": \"https://www.sandbox.paypal.com/checkoutnow?token=SAMPLE\",\n  \"tone\": \"pirate\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/nudge/generate",
+					"host": ["{{baseUrl}}"],
+					"path": ["api", "nudge", "generate"]
+				}
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8000"
+		},
+		{
+			"key": "bill_id",
+			"value": ""
+		},
+		{
+			"key": "receipt_items",
+			"value": "[]"
+		},
+		{
+			"key": "test_order_id",
+			"value": ""
+		}
+	]
+}
